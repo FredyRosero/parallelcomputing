@@ -45,7 +45,38 @@ public final class StudentAnalytics {
      */
     public double averageAgeOfEnrolledStudentsParallelStream(
             final Student[] studentArray) {
-        throw new UnsupportedOperationException();
+        /*        
+        // Sequential stream
+        return Stream.of(studentArray)
+                .filter(s -> s.checkIsCurrent())
+                .mapToDouble(Student::getAge)
+                .average()
+                .getAsDouble();
+        */
+        // Se crea un Stream a partir del arreglo y se convierte a un stream paralelo.
+        // Aquí, 'parallel()' actúa como un funtor: transforma el stream secuencial en un stream paralelo
+        // sin alterar la estructura subyacente (la colección de estudiantes).
+        return Stream.of(studentArray)
+                // paralelismo funcional:
+                .parallel() // Funtor de paralelismo: preserva la estructura del stream mientras habilita procesamiento en paralelo.
+                // 'filter' es un endomorfismo en la categoría de Streams: 
+                // toma un Stream<Student> y devuelve otro Stream<Student> que contiene solo los elementos que cumplen la condición.
+                .filter(s -> s.checkIsCurrent()) // Stream<Student> -> Stream<Student>
+                // 'mapToDouble' aplica un morfismo entre categorías:
+                // transforma cada Student en un valor double (su edad), pasando de un Stream<Student> a un DoubleStream.
+                .mapToDouble(Student::getAge) // Stream<Student> -> DoubleStream
+                // 'average' es una operación reductora (catamorfismo) que reduce la estructura de un DoubleStream a un OptionalDouble.
+                // Aquí, OptionalDouble encapsula el resultado (o la ausencia de él) en un contexto monádico.
+                .average() // DoubleStream -> OptionalDouble
+                // Extrae el valor primitivo double de la mónada OptionalDouble; se asume que siempre hay un valor.
+                .getAsDouble(); // OptionalDouble -> double
+
+        // OptionalDouble se considera una mónada porque provee operaciones de 'map' y 'flatMap'
+        // (a través de métodos similares en su API) y cumple con las leyes monádicas, permitiendo
+        // el encadenamiento seguro de operaciones en un contexto de posible ausencia de valor.
+
+        // Un catamorfismo es un concepto proveniente de la teoría de categorías que se utiliza en programación
+        // funcional para describir el proceso de "plegar" o descomponer estructuras de datos recursivas en un único valor.
     }
 
     /**
@@ -97,9 +128,40 @@ public final class StudentAnalytics {
      * @return Nombre más comun de los estudiantes inactivos.
      */
     public String mostCommonFirstNameOfInactiveStudentsParallelStream(
-            final Student[] studentArray) {
-        throw new UnsupportedOperationException();
+        final Student[] studentArray) {
+    // Se crea un Stream a partir del arreglo de estudiantes y se lo convierte en un stream paralelo.
+    // Esto aplica un funtor de paralelismo que preserva la estructura del stream mientras habilita el procesamiento concurrente.
+    return Stream.of(studentArray)
+            // Se convierte el stream en un stream paralelo, un funtor para paralelismo
+            .parallel() // funtor:Stream<Student> -> funtor:Stream(Parelelismo)<Student>
+            // Se filtran los estudiantes para conservar solo aquellos que NO están activos.
+            // Este 'filter' actúa como un endomorfismo en la categoría de Streams, transformando un Stream<Student> en otro de la misma forma.
+            .filter(s -> !s.checkIsCurrent()) // funtor:Stream(Parelelismo)<Student> -> funtor:Stream(Parelelismo)<Student>
+            // Se aplica una operación de reducción 'groupingBy' que agrupa los elementos del stream en un Map.
+            // El funtor 'groupingBy' mapea cada estudiante a su primer nombre (Student::getFirstName),
+            // agrupando aquellos con la misma clave, lo que corresponde a un catamorfismo que reduce la estructura a un Map<String, List<Student>>.
+            // Sin embargo, al usar el downstream 'counting()', se transforma cada grupo en un conteo (Long),
+            // obteniéndose así un Map<String, Long> que representa la frecuencia de cada nombre.
+            .collect // operación terminal que convierte el funtor stream(Parelelismo) en un valor final objeto
+            (
+                    java.util.stream.Collectors.groupingBy // función de orden superior 
+                    ( 
+                        Student::getFirstName, // morfismo: Student -> String
+                        java.util.stream.Collectors.counting() // catamorfismo: Stream<Student> -> Long (downstream collector)
+                    ) 
+            ) // Stream<Student> -> Map<String, Long>
+            // Se transforma el Map en un stream de entradas (Entry<String, Long>) para poder aplicar una operación reductora 'max'.
+            .entrySet() // objeto:Map<String, Long> -> objeto:Set<Map.Entry<String, Long>>
+            .stream() // objeto:Set<Map.Entry<String, Long>> -> funtor:Stream<Map.Entry<String, Long>>
+            // 'max' es un catamorfismo que, mediante un comparador, reduce el stream a un único elemento: 
+            // el par clave-valor con el máximo valor (la mayor cantidad de estudiantes con el mismo nombre).
+            .max(java.util.Map.Entry.comparingByValue()) // Stream<Map.Entry<String, Long>> -> Optional<Map.Entry<String, Long>>
+            // 'get' extrae el resultado del Optional generado por 'max'.
+            .get() // Optional<Map.Entry<String, Long>> -> Map.Entry<String, Long>
+            // 'getKey' extrae la clave (el primer nombre) del par con el máximo conteo.
+            .getKey(); // Map.Entry<String, Long> -> String    
     }
+
 
     /**
      * calcula secuencialmente el número de estudiantes que han perdido el curso 
@@ -133,6 +195,9 @@ public final class StudentAnalytics {
      */
     public int countNumberOfFailedStudentsOlderThan20ParallelStream(
             final Student[] studentArray) {
-        throw new UnsupportedOperationException();
+        return (int) Stream.of(studentArray)
+                .parallel() // funtor:Stream<Student> -> funtor:Stream(Parelelismo)<Student>
+                .filter(s -> !s.checkIsCurrent() && s.getAge() > 20 && s.getGrade() < 65) // morfismo: funtor:Stream(Parelelismo)<Student> -> funtor:Stream(Parelelismo)<Student>
+                .count(); // catamorfismo: funtor:Stream(Parelelismo)<Student> -> long
     }
 }
