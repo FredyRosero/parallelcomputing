@@ -112,7 +112,7 @@ public final class ReciprocalArraySum {
             this.startIndexInclusive = setStartIndexInclusive;
             this.endIndexExclusive = setEndIndexExclusive;
             this.input = setInput;
-            //System.out.println("ReciprocalArraySumTask" + this.hashCode() + ":\t" + setStartIndexInclusive + "\t-\t" + setEndIndexExclusive);
+            System.out.println("NEW ReciprocalArraySumTask" + this.hashCode() + ":\t" + setStartIndexInclusive + "\t-\t" + setEndIndexExclusive);
         }
 
         /**
@@ -131,14 +131,14 @@ public final class ReciprocalArraySum {
         @Override
         protected void compute() {
             if (endIndexExclusive - startIndexInclusive <= input.length/2) {
-                //System.out.println("ReciprocalArraySumTask" + this.hashCode() + " caso base.");
+                System.out.println("ReciprocalArraySumTask" + this.hashCode() + " caso base.");
                 double sum = 0;
                 for (int i = startIndexInclusive; i < endIndexExclusive; i++) {
                     sum += 1 / input[i];
                 }
                 value = sum;
             } else {
-                //System.out.println("ReciprocalArraySumTask" + this.hashCode() + " recursion.");
+                System.out.println("ReciprocalArraySumTask" + this.hashCode() + " recursion.");
                 int mid = (startIndexInclusive + endIndexExclusive) / 2;
                 ReciprocalArraySumTask left = new ReciprocalArraySumTask(startIndexInclusive, mid, input);
                 ReciprocalArraySumTask right = new ReciprocalArraySumTask(mid, endIndexExclusive, input);
