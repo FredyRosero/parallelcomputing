@@ -46,6 +46,8 @@ Modificar el método ReciprocalArraySum.parManyTaskArraySum para implementar el 
 
 # Desarrollo
 
+## Setup
+
 ```powershell
 cd ejercicio_1
 ```
@@ -54,12 +56,36 @@ cd ejercicio_1
 mvn clean install '-Dmaven.test.skip=true'
 ```
 
+Mostra cantidad de núcleos de la máquina
+
+```powershell
+wmic cpu get NumberOfLogicalProcessors
+```
+
+```bash
+nproc
+```
+
+Mostrar la cantidad de preocesadores en la JVM
+
+```powershell
+echo "System.out.println(Runtime.getRuntime().availableProcessors());" | jshell -q
+```
+
+```bash
+echo "System.out.println(Runtime.getRuntime().availableProcessors());" | jshell -q
+```
+
+## Pruebas
+
+
 ```powershell
 mvn clean
 mvn test '-Dtest=ReciprocalArraySumTest#testParSimpleTwoMillion' > ("testParSimpleTwoMillion" + [DateTimeOffset]::Now.ToUnixTimeSeconds() + ".txt")
 mvn test '-Dtest=ReciprocalArraySumTest#testParSimpleTwoHundredMillion' > ("testParSimpleTwoHundredMillion" + [DateTimeOffset]::Now.ToUnixTimeSeconds() + ".txt")
 mvn test '-Dtest=ReciprocalArraySumTest#testParManyTaskTwoMillion' > ("testParManyTaskTwoMillion" + [DateTimeOffset]::Now.ToUnixTimeSeconds() + ".txt")
 mvn test '-Dtest=ReciprocalArraySumTest#testParManyTaskTwoHundredMillion' > ("testPartestParManyTaskTwoHundredMillionManyTaskTwoMillion" + [DateTimeOffset]::Now.ToUnixTimeSeconds() + ".txt")
+mvn test > ("test" + [DateTimeOffset]::Now.ToUnixTimeSeconds() + ".txt")
 ```
 
 ```bash
@@ -68,6 +94,7 @@ mvn test -Dtest=ReciprocalArraySumTest#testParSimpleTwoMillion > testParSimpleTw
 mvn test -Dtest=ReciprocalArraySumTest#testParSimpleTwoHundredMillion > testParSimpleTwoHundredMillion$(date +%s).txt
 mvn test -Dtest=ReciprocalArraySumTest#testParManyTaskTwoMillion > testParManyTaskTwoMillion$(date +%s).txt
 mvn test -Dtest=ReciprocalArraySumTest#testParManyTaskTwoHundredMillion > testParManyTaskTwoHundredMillion$(date +%s).txt
+mvn test > test$(date +%s).txt
 ```
 
 ```powershell
