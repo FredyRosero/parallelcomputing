@@ -1,5 +1,6 @@
 package co.edu.unal.paralela;
 
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
 
 /**
@@ -53,8 +54,7 @@ public final class ReciprocalArraySum {
      * @return El índice inclusivo donde esta sección/trozo (chunk) inicia en el conjunto de 
      *         nElements
      */
-    private static int getChunkStartInclusive(final int chunk,
-            final int nChunks, final int nElements) {
+    private static int getChunkStartInclusive(final int chunk, final int nChunks, final int nElements) {
         final int chunkSize = getChunkSize(nChunks, nElements);
         return chunk * chunkSize;
     }
@@ -108,11 +108,11 @@ public final class ReciprocalArraySum {
          * @param setEndIndexExclusive establece el índice final para el recorrido trasversal.
          * @param setInput Valores de entrada
          */
-        ReciprocalArraySumTask(final int setStartIndexInclusive,
-                final int setEndIndexExclusive, final double[] setInput) {
+        ReciprocalArraySumTask(final int setStartIndexInclusive, final int setEndIndexExclusive, final double[] setInput) {
             this.startIndexInclusive = setStartIndexInclusive;
             this.endIndexExclusive = setEndIndexExclusive;
             this.input = setInput;
+            //System.out.println("ReciprocalArraySumTask" + this.hashCode() + ":\t" + setStartIndexInclusive + "\t-\t" + setEndIndexExclusive);
         }
 
         /**
@@ -123,9 +123,41 @@ public final class ReciprocalArraySum {
             return value;
         }
 
+        /**
+         * Implementación recursiva de la tarea para calcular la suma de los recíprocos del arreglo.
+         * A la hora de computar la suma, se divide el trabajo en dos tareas más pequeñas.
+         * LA Recursión Múltiple (Árbol Recursivo) se utiliza para dividir el trabajo en tareas más pequeñas.
+         */
         @Override
         protected void compute() {
-            // Para hacer
+            if (endIndexExclusive - startIndexInclusive <= input.length/2) {
+                //System.out.println("ReciprocalArraySumTask" + this.hashCode() + " caso base.");
+                double sum = 0;
+                for (int i = startIndexInclusive; i < endIndexExclusive; i++) {
+                    sum += 1 / input[i];
+                }
+                value = sum;
+            } else {
+                //System.out.println("ReciprocalArraySumTask" + this.hashCode() + " recursion.");
+                int mid = (startIndexInclusive + endIndexExclusive) / 2;
+                ReciprocalArraySumTask left = new ReciprocalArraySumTask(startIndexInclusive, mid, input);
+                ReciprocalArraySumTask right = new ReciprocalArraySumTask(mid, endIndexExclusive, input);
+                /* 
+                // Estrategia #1
+                left.fork();
+                right.compute();
+                left.join();
+                value = left.value + right.value;
+                */
+                /*
+                // Estrategia #2
+                ForkJoinTask.invokeAll(left, right);
+                value = left.getValue() + right.getValue();
+                */
+                // Estrategia #3
+                RecursiveAction.invokeAll(left, right);
+                value = left.getValue() + right.getValue();
+            }
         }
     }
 
@@ -143,11 +175,12 @@ public final class ReciprocalArraySum {
 
         double sum = 0;
 
-        // Calcula la suma de los recíprocos de los elementos del arreglo
-        for (int i = 0; i < input.length; i++) {
-            sum += 1 / input[i];
-        }
-
+        // Se crea la tarea para todo el arreglo.
+        ReciprocalArraySumTask task = new ReciprocalArraySumTask(0, input.length, input);
+        // Se utiliza el pool común para invocar la tarea, lo que permite que las sub-tareas se ejecuten en paralelo.
+        ForkJoinPool pool = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+        pool.invoke(task);
+        sum = task.getValue();
         return sum;
     }
 
@@ -161,15 +194,51 @@ public final class ReciprocalArraySum {
      * @param numTasks El número de tareas para crear
      * @return La suma de los recíprocos del arreglo de entrada
      */
-    protected static double parManyTaskArraySum(final double[] input,
-            final int numTasks) {
-        double sum = 0;
-
-        // Calcula la suma de los recíprocos de los elementos del arreglo
-        for (int i = 0; i < input.length; i++) {
-            sum += 1 / input[i];
+    protected static double parManyTaskArraySum(final double[] input, final int numTasks) {
+        ReciprocalArraySumTask[] tasks = new ReciprocalArraySumTask[numTasks];
+        int nElements = input.length;
+        // Se parte el arreglo en secciones/trozos (chunks) y se crea una tarea para cada sección/trozo (chunk).
+        for (int i = 0; i < numTasks; i++) {
+            // Para el i-ésimo trozo, se calcula el índice de inicio y fin.
+            int start = getChunkStartInclusive(i, numTasks, nElements);
+            int end = getChunkEndExclusive(i, numTasks, nElements);
+            tasks[i] = new ReciprocalArraySumTask(start, end, input);
         }
 
+        /* 
+        // Estrategia #1
+        // Ejecuta las tareas en paralelo usando fork/join
+        for (int i = 0; i < numTasks; i++) {
+            tasks[i].fork();
+        }
+        // Espera a que todas finalicen
+        for (int i = 0; i < numTasks; i++) {
+            tasks[i].join();
+        }
+        
+        // Suma los resultados parciales de cada tarea
+        double sum = 0;
+        for (int i = 0; i < numTasks; i++) {
+            sum += tasks[i].getValue();
+        }
+        return sum;
+        */
+
+        /*
+        // Estrategia #2
+        // Invoca todas las tareas en paralelo de forma optimizada.
+        ForkJoinTask.invokeAll(tasks);
+        */
+
+        // Estrategia #3
+        // 
+        RecursiveAction.invokeAll(tasks);
+        
+        // Suma los resultados parciales.
+        double sum = 0;
+        for (ReciprocalArraySumTask task : tasks) {
+            sum += task.getValue();
+        }
         return sum;
     }
 }
